@@ -97,7 +97,7 @@ namespace Users.Api.Controllers
             var result = await _userManager.ConfirmEmailAsync(user, code);
             if (result.Succeeded)
             {
-                return Ok(result.Succeeded);
+                return Ok("Thank you for confirming your email.");
             }
             
             ModelState.AddErrors(result);
