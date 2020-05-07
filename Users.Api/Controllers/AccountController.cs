@@ -34,18 +34,23 @@ namespace Users.Api.Controllers
         public async Task<IActionResult> ResetPassword([FromBody]ResetPasswordDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest("Error1");
+            {
+                return BadRequest(ModelState);
+            }
 
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
-                return BadRequest("Error2");
+            {
+                return BadRequest("User null");
+            }
 
             var result = await _userManager.ResetPasswordAsync(user, request.Code, request.Password);
             if (result.Succeeded)
-                return Ok(true);
+            {
+                return Ok("Your password has been reset.");
+            }
 
             ModelState.AddErrors(result);
-
             return BadRequest(ModelState);
         }
 
@@ -57,15 +62,17 @@ namespace Users.Api.Controllers
             if (ModelState.IsValid)
             {
                 var user = await _userManager.FindByEmailAsync(request.Email);
-                if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
-                    return BadRequest("Error1");
+                if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
+                {
+                    return BadRequest("Please verify your e-mail address.");
+                }
 
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
                 var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(code);
                 await _emailSender.SendEmailAsync(request.Email, "Reset Password",
                     $"Please reset your password by clicking here: <a href='{callbackUrl}'>link</a>");
 
-                return Ok(true);
+                return Ok("Please check your email to reset your password.");
             }
 
             return BadRequest(ModelState);
@@ -77,17 +84,24 @@ namespace Users.Api.Controllers
         public async Task<IActionResult> ConfirmEmail([FromQuery]int userId, [FromQuery]string code)
         {
             if (userId <= 0 || code == null)
-                return BadRequest("Error1");
+            {
+                return BadRequest("user id 0 or code null");
+            }
 
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null)
-                return BadRequest("Error2");
+            {
+                return BadRequest("User null");
+            }
 
             var result = await _userManager.ConfirmEmailAsync(user, code);
-            if (!result.Succeeded)
-                return BadRequest("Error3");
-
-            return Ok(result.Succeeded);
+            if (result.Succeeded)
+            {
+                return Ok(result.Succeeded);
+            }
+            
+            ModelState.AddErrors(result);
+            return BadRequest(ModelState);
         }
 
         [HttpPost]
@@ -108,13 +122,11 @@ namespace Users.Api.Controllers
                 if (result.Succeeded)
                 {
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    code = HttpUtility.UrlEncode(code);
-                    var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, code);
+                    var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, HttpUtility.UrlEncode(code));
                     await _emailSender.SendEmailAsync(request.Email, "Confirm your email",
                         $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
 
-                    var response = Mapper.MapToUserDto(user);
-                    return Created($"User/{user.Id}", response);
+                    return Created($"User/{user.Id}", null);
                 }
                 ModelState.AddErrors(result);
             }
