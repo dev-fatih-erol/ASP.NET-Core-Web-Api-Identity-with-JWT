@@ -62,7 +62,8 @@ namespace Users.Api.Controllers
 
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
                 var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(code);
-                await _emailSender.SendEmailPasswordRecoveryAsync(request.Email, callbackUrl);
+                await _emailSender.SendEmailAsync(request.Email, "Reset Password",
+                    $"Please reset your password by clicking here: <a href='{callbackUrl}'>link</a>");
 
                 return Ok(true);
             }
@@ -109,7 +110,8 @@ namespace Users.Api.Controllers
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = HttpUtility.UrlEncode(code);
                     var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, code);
-                    await _emailSender.SendEmailConfirmationAsync(request.Email, callbackUrl);
+                    await _emailSender.SendEmailAsync(request.Email, "Confirm your email",
+                        $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
 
                     var response = Mapper.MapToUserDto(user);
                     return Created($"User/{user.Id}", response);
