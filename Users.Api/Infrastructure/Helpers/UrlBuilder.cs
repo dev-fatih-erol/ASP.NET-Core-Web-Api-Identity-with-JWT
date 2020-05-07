@@ -8,5 +8,10 @@
         {
             return $"{ApplicationUrl}/Account/ConfirmEmail?userId={userId}&code={code}";
         }
+
+        public static string ResetPasswordCallbackLink(int userId, string code)
+        {
+            return $"{ApplicationUrl}/Account/ResetPassword?userId={userId}&code={code}";
+        }
     }
 }

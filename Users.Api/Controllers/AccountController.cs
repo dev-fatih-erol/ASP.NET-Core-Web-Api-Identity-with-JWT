@@ -28,6 +28,28 @@ namespace Users.Api.Controllers
             _emailSender = emailSender;
         }
 
+        [HttpPost]
+        [AllowAnonymous]
+        [Route("Account/ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(request.Email);
+                if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
+                    return BadRequest("Error1");
+
+                var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+                code = HttpUtility.UrlEncode(code);
+                var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(user.Id, code);
+                await _emailSender.SendEmailConfirmationAsync1(request.Email, callbackUrl);
+
+                return Ok("");
+            }
+
+            return BadRequest(ModelState);
+        }
+
         [HttpGet]
         [AllowAnonymous]
         [Route("Account/ConfirmEmail")]
