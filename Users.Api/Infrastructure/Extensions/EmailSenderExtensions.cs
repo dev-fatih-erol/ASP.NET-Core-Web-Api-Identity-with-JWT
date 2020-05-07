@@ -5,7 +5,7 @@ namespace Users.Api.Infrastructure.Extensions
 {
     public static class EmailSenderExtensions
     {
-        public static Task SendEmailConfirmationAsync1(this IEmailSender emailSender, string email, string link)
+        public static Task SendEmailPasswordRecoveryAsync(this IEmailSender emailSender, string email, string link)
         {
             return emailSender.SendEmailAsync(email, "Reset Password",
                 $"Please reset your password by clicking here: <a href='{link}'>link</a>");

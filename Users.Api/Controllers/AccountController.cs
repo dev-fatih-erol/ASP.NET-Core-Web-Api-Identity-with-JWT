@@ -30,8 +30,29 @@ namespace Users.Api.Controllers
 
         [HttpPost]
         [AllowAnonymous]
+        [Route("Account/ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody]ResetPasswordDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest("Error1");
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return BadRequest("Error2");
+
+            var result = await _userManager.ResetPasswordAsync(user, request.Code, request.Password);
+            if (result.Succeeded)
+                return Ok(true);
+
+            ModelState.AddErrors(result);
+
+            return BadRequest(ModelState);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
         [Route("Account/ForgotPassword")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
+        public async Task<IActionResult> ForgotPassword([FromBody]ForgotPasswordDto request)
         {
             if (ModelState.IsValid)
             {
@@ -40,11 +61,10 @@ namespace Users.Api.Controllers
                     return BadRequest("Error1");
 
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-                code = HttpUtility.UrlEncode(code);
-                var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(user.Id, code);
-                await _emailSender.SendEmailConfirmationAsync1(request.Email, callbackUrl);
+                var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(code);
+                await _emailSender.SendEmailPasswordRecoveryAsync(request.Email, callbackUrl);
 
-                return Ok("");
+                return Ok(true);
             }
 
             return BadRequest(ModelState);
@@ -53,7 +73,7 @@ namespace Users.Api.Controllers
         [HttpGet]
         [AllowAnonymous]
         [Route("Account/ConfirmEmail")]
-        public async Task<IActionResult> ConfirmEmail(int userId, string code)
+        public async Task<IActionResult> ConfirmEmail([FromQuery]int userId, [FromQuery]string code)
         {
             if (userId <= 0 || code == null)
                 return BadRequest("Error1");

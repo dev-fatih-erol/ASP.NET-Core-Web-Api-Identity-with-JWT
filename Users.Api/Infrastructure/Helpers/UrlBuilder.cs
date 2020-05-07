@@ -9,9 +9,9 @@
             return $"{ApplicationUrl}/Account/ConfirmEmail?userId={userId}&code={code}";
         }
 
-        public static string ResetPasswordCallbackLink(int userId, string code)
+        public static string ResetPasswordCallbackLink(string code)
         {
-            return $"{ApplicationUrl}/Account/ResetPassword?userId={userId}&code={code}";
+            return $"{ApplicationUrl}/Account/ResetPassword?code={code}";
         }
     }
 }
