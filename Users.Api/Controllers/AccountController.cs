@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Users.Api.Data.Entities;
 using Users.Api.Infrastructure.Extensions;
+using Users.Api.Infrastructure.Helpers;
 using Users.Api.Models;
 using Users.Api.Services;
 
@@ -48,7 +49,7 @@ namespace Users.Api.Controllers
                 if (result.Succeeded)
                 {
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    var callbackUrl = Url.EmailConfirmationLink(user.Id, code, Request.Scheme);
+                    var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, code);
                     await _emailSender.SendEmailConfirmationAsync(request.Email, callbackUrl);
 
                     return Created($"User/{user.Id}", user);
