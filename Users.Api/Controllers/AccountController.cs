@@ -1,6 +1,9 @@
 ﻿using System.Threading.Tasks;
+using System.Web;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Users.Api.Data.Entities;
 using Users.Api.Infrastructure.Extensions;
 using Users.Api.Infrastructure.Helpers;
@@ -26,13 +29,26 @@ namespace Users.Api.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         [Route("Account/ConfirmEmail")]
-        public async Task<IActionResult> ConfirmEmail(string userId, string code)
+        public async Task<IActionResult> ConfirmEmail(int userId, string code)
         {
-            return Ok();
+            if (userId <= 0 || code == null)
+                return BadRequest("Error1");
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return BadRequest("Error2");
+
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+            if (!result.Succeeded)
+                return BadRequest("Error3");
+
+            return Ok(result.Succeeded);
         }
 
         [HttpPost]
+        [AllowAnonymous]
         [Route("Account/Register")]
         public async Task<IActionResult> Register([FromBody]RegisterDto request)
         {
@@ -49,10 +65,12 @@ namespace Users.Api.Controllers
                 if (result.Succeeded)
                 {
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    code = HttpUtility.UrlEncode(code);
                     var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, code);
                     await _emailSender.SendEmailConfirmationAsync(request.Email, callbackUrl);
 
-                    return Created($"User/{user.Id}", user);
+                    var response = Mapper.MapToUserDto(user);
+                    return Created($"User/{user.Id}", response);
                 }
                 ModelState.AddErrors(result);
             }
