@@ -1,9 +1,15 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Users.Api.Data.Entities;
 using Users.Api.Infrastructure.Extensions;
 using Users.Api.Infrastructure.Helpers;
@@ -17,15 +23,59 @@ namespace Users.Api.Controllers
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IEmailSender _emailSender;
+        private readonly IConfiguration _configuration;
 
         public AccountController(
             UserManager<User> userManager,
             SignInManager<User> signInManager,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
+            _configuration = configuration;
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [Route("Account/Login")]
+        public async Task<IActionResult> Login([FromBody]LoginDto request)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(request.Email);
+                if (user != null)
+                {
+                    var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+                    if (result.Succeeded)
+                    {
+                        var date = DateTime.UtcNow;
+                        var claims = new[]
+                        {
+                            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                            new Claim(JwtRegisteredClaimNames.Iat, date.ToUniversalTime().ToString(), ClaimValueTypes.Integer64)
+                        };
+                        var securityKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(_configuration["JwtConfiguration:SecurityKey"]));
+                        var securityToken = new JwtSecurityToken(
+                            issuer: _configuration["JwtConfiguration:Issuer"],
+                            audience: _configuration["JwtConfiguration:Audience"],
+                            claims: claims,
+                            notBefore: date,
+                            expires: date.AddMinutes(60),
+                            signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
+                        );
+
+                        var token = new JwtSecurityTokenHandler().WriteToken(securityToken);
+                        return Ok(token);
+                    }
+                }
+                return BadRequest("Invalid email or password.");
+            }
+
+            return BadRequest(ModelState);
         }
 
         [HttpPost]
