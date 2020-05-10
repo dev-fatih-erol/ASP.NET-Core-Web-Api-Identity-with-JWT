@@ -112,9 +112,9 @@ namespace Users.Api.Controllers
             if (ModelState.IsValid)
             {
                 var user = await _userManager.FindByEmailAsync(request.Email);
-                if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
+                if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
                 {
-                    return BadRequest("Please verify your e-mail address.");
+                    return BadRequest("Please verify your email address.");
                 }
 
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
