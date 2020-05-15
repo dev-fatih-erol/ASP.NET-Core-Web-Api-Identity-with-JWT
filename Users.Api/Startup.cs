@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Users.Api.Data;
 using Users.Api.Data.Entities;
+using Users.Api.Infrastructure.Filters;
 using Users.Api.Services;
 
 namespace Users.Api
@@ -31,7 +32,8 @@ namespace Users.Api
 
             services.AddIdentity<User, Role>(o =>
             {
-                o.SignIn.RequireConfirmedEmail = false;
+                o.User.RequireUniqueEmail = true;
+                o.SignIn.RequireConfirmedEmail = true;
             })
                 .AddEntityFrameworkStores<UserDbContext>()
                 .AddDefaultTokenProviders();
@@ -59,7 +61,10 @@ namespace Users.Api
 
             services.AddTransient<IEmailSender, EmailSender>();
 
-            services.AddControllers();
+            services.AddControllers(o =>
+                {
+                    o.Filters.Add(typeof(ValidateModelStateFilter));
+                });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

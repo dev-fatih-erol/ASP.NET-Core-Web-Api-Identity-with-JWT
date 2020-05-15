@@ -42,40 +42,36 @@ namespace Users.Api.Controllers
         [Route("Account/Login")]
         public async Task<IActionResult> Login([FromBody]LoginDto request)
         {
-            if (ModelState.IsValid)
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user != null)
             {
-                var user = await _userManager.FindByEmailAsync(request.Email);
-                if (user != null)
+                var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+                if (result.Succeeded)
                 {
-                    var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-                    if (result.Succeeded)
-                    {
-                        var date = DateTime.UtcNow;
-                        var claims = new[]
+                    var date = DateTime.UtcNow;
+                    var claims = new[]
                         {
                             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                             new Claim(JwtRegisteredClaimNames.Iat, date.ToUniversalTime().ToString(), ClaimValueTypes.Integer64)
                         };
-                        var securityKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(_configuration["JwtConfiguration:SecurityKey"]));
-                        var securityToken = new JwtSecurityToken(
-                            issuer: _configuration["JwtConfiguration:Issuer"],
-                            audience: _configuration["JwtConfiguration:Audience"],
-                            claims: claims,
-                            notBefore: date,
-                            expires: date.AddMinutes(60),
-                            signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
-                        );
+                    var securityKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(_configuration["JwtConfiguration:SecurityKey"]));
+                    var securityToken = new JwtSecurityToken(
+                        issuer: _configuration["JwtConfiguration:Issuer"],
+                        audience: _configuration["JwtConfiguration:Audience"],
+                        claims: claims,
+                        notBefore: date,
+                        expires: date.AddMinutes(60),
+                        signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
+                    );
 
-                        var token = new JwtSecurityTokenHandler().WriteToken(securityToken);
-                        return Ok(token);
-                    }
+                    var token = new JwtSecurityTokenHandler().WriteToken(securityToken);
+                    return Ok(token);
                 }
-                return BadRequest("Invalid email or password.");
             }
 
-            return BadRequest(ModelState);
+            return BadRequest("Please try another email address or password.");
         }
 
         [HttpPost]
@@ -83,15 +79,10 @@ namespace Users.Api.Controllers
         [Route("Account/ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody]ResetPasswordDto request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
-                return BadRequest("User null");
+                return BadRequest("Please try another email address.");
             }
 
             var result = await _userManager.ResetPasswordAsync(user, request.Code, request.Password);
@@ -100,8 +91,7 @@ namespace Users.Api.Controllers
                 return Ok("Your password has been reset.");
             }
 
-            ModelState.AddErrors(result);
-            return BadRequest(ModelState);
+            return BadRequest(result.GetError());
         }
 
         [HttpPost]
@@ -109,23 +99,18 @@ namespace Users.Api.Controllers
         [Route("Account/ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody]ForgotPasswordDto request)
         {
-            if (ModelState.IsValid)
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
             {
-                var user = await _userManager.FindByEmailAsync(request.Email);
-                if (user == null || !await _userManager.IsEmailConfirmedAsync(user))
-                {
-                    return BadRequest("Please verify your email address.");
-                }
-
-                var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(code);
-                await _emailSender.SendEmailAsync(request.Email, "Reset Password",
-                    $"Please reset your password by clicking here: <a href='{callbackUrl}'>link</a>");
-
-                return Ok("Please check your email to reset your password.");
+                return BadRequest("Please try another email address.");
             }
 
-            return BadRequest(ModelState);
+            var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var callbackUrl = UrlBuilder.ResetPasswordCallbackLink(code);
+            await _emailSender.SendEmailAsync(request.Email, "Reset Password",
+                $"Please reset your password by clicking here: <a href='{callbackUrl}'>link</a>");
+
+            return Ok("Please check your email to reset your password.");
         }
 
         [HttpGet]
@@ -133,15 +118,15 @@ namespace Users.Api.Controllers
         [Route("Account/ConfirmEmail")]
         public async Task<IActionResult> ConfirmEmail([FromQuery]int userId, [FromQuery]string code)
         {
-            if (userId <= 0 || code == null)
+            if (code == null)
             {
-                return BadRequest("user id 0 or code null");
+                throw new ApplicationException("A code must be supplied for email confirm.");
             }
 
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null)
             {
-                return BadRequest("User null");
+                throw new ApplicationException($"Unable to load user with ID '{userId}'.");
             }
 
             var result = await _userManager.ConfirmEmailAsync(user, code);
@@ -150,8 +135,7 @@ namespace Users.Api.Controllers
                 return Ok("Thank you for confirming your email.");
             }
             
-            ModelState.AddErrors(result);
-            return BadRequest(ModelState);
+            return BadRequest(result.GetError());
         }
 
         [HttpPost]
@@ -159,29 +143,25 @@ namespace Users.Api.Controllers
         [Route("Account/Register")]
         public async Task<IActionResult> Register([FromBody]RegisterDto request)
         {
-            if (ModelState.IsValid)
+            var user = new User
             {
-                var user = new User
-                {
-                    Name = request.Name,
-                    Surname = request.Surname,
-                    UserName = request.UserName,
-                    Email = request.Email
-                };
-                var result = await _userManager.CreateAsync(user, request.Password);
-                if (result.Succeeded)
-                {
-                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, HttpUtility.UrlEncode(code));
-                    await _emailSender.SendEmailAsync(request.Email, "Confirm your email",
-                        $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
+                Name = request.Name,
+                Surname = request.Surname,
+                UserName = request.UserName,
+                Email = request.Email
+            };
+            var result = await _userManager.CreateAsync(user, request.Password);
+            if (result.Succeeded)
+            {
+                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                var callbackUrl = UrlBuilder.EmailConfirmationLink(user.Id, HttpUtility.UrlEncode(code));
+                await _emailSender.SendEmailAsync(request.Email, "Confirm your email",
+                    $"Please confirm your account by clicking this link: <a href='{callbackUrl}'>link</a>");
 
-                    return Created($"User/{user.Id}", null);
-                }
-                ModelState.AddErrors(result);
+                return Created($"User/{user.Id}", null);
             }
 
-            return BadRequest(ModelState);
+            return BadRequest(result.GetError());
         }
     }
 }
