@@ -20,5 +20,8 @@ namespace Users.Api.Models
         [Required]
         [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; }
+
+        [Compare("Password")]
+        public string ConfirmPassword { get; set; }
     }
 }

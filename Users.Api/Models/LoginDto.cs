@@ -5,6 +5,7 @@ namespace Users.Api.Models
     public class LoginDto
     {
         [Required]
+        [EmailAddress]
         public string Email { get; set; }
 
         [Required]
