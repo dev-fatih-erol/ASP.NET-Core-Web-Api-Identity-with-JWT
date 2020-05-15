@@ -5,7 +5,7 @@ namespace Users.Api.Infrastructure.Helpers
 {
     public class Mapper
     {
-        public static UserDto MapToUserDto(User user)
+        public UserDto MapToUserDto(User user)
         {
             var userDto = new UserDto()
             {

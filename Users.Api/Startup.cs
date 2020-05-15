@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Users.Api.Data;
 using Users.Api.Data.Entities;
 using Users.Api.Infrastructure.Filters;
+using Users.Api.Infrastructure.Helpers;
 using Users.Api.Services;
 
 namespace Users.Api
@@ -58,6 +59,8 @@ namespace Users.Api
                             Encoding.ASCII.GetBytes(Configuration["JwtConfiguration:SecurityKey"]))
                     };
                 });
+
+            services.AddTransient<Mapper>();
 
             services.AddTransient<IEmailSender, EmailSender>();
 
