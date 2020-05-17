@@ -11,10 +11,25 @@ namespace Users.Api.Infrastructure.Helpers
             {
                 Id = user.Id,
                 Name = user.Name,
+                Surname = user.Surname,
                 UserName = user.UserName
             };
 
             return userDto;
+        }
+
+        public MeDto MapToMeDto(User user)
+        {
+            var meDto = new MeDto()
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Surname = user.Surname,
+                UserName = user.UserName,
+                PhoneNumber = user.PhoneNumber
+            };
+
+            return meDto;
         }
     }
 }

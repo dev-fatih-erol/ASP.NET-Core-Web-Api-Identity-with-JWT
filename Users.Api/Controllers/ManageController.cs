@@ -42,19 +42,5 @@ namespace Users.Api.Controllers
 
             return BadRequest(result.GetError());
         }
-
-        [HttpGet]
-        [Authorize]
-        [Route("Manage")]
-        public async Task<IActionResult> Get()
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                throw new ApplicationException($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
-
-            return Ok(_mapper.MapToUserDto(user));
-        }
     }
 }
