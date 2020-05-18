@@ -52,7 +52,29 @@ namespace Users.Api.Controllers
             var result = await _userManager.ChangePasswordAsync(user, request.OldPassword, request.NewPassword);
             if (result.Succeeded)
             {
-                return Ok("Your password has been changed.");
+                return NoContent();
+            }
+
+            return BadRequest(result.GetError());
+        }
+
+        [HttpPut]
+        [Authorize]
+        [Route("User")]
+        public async Task<IActionResult> Update([FromBody]UpdateUserDto request)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                throw new ApplicationException($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+            }
+
+            user.Name = request.Name;
+            user.Surname = request.Surname;
+            var result = await _userManager.UpdateAsync(user);
+            if (result.Succeeded)
+            {
+                return NoContent();
             }
 
             return BadRequest(result.GetError());
