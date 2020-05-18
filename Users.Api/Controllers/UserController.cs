@@ -11,6 +11,7 @@ using Users.Api.Models;
 
 namespace Users.Api.Controllers
 {
+    [Authorize]
     public class UserController : Controller
     {
         private readonly UserManager<User> _userManager;
@@ -24,22 +25,7 @@ namespace Users.Api.Controllers
             _mapper = mapper;
         }
 
-        [HttpGet]
-        [Authorize]
-        [Route("User/{id:int}")]
-        public async Task<IActionResult> GetById([FromRoute]int id)
-        {
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(_mapper.MapToUserDto(user));
-        }
-
         [HttpPut]
-        [Authorize]
         [Route("User/Password")]
         public async Task<IActionResult> ChangePassword([FromBody]ChangePasswordDto request)
         {
@@ -59,7 +45,6 @@ namespace Users.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize]
         [Route("User")]
         public async Task<IActionResult> Update([FromBody]UpdateUserDto request)
         {
@@ -78,6 +63,19 @@ namespace Users.Api.Controllers
             }
 
             return BadRequest(result.GetError());
+        }
+
+        [HttpGet]
+        [Route("User/{id:int}")]
+        public async Task<IActionResult> GetById([FromRoute]int id)
+        {
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(_mapper.MapToUserDto(user));
         }
     }
 }
